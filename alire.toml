@@ -1,0 +1,9 @@
+name = "lets_build_a_compiler"
+description = "James Crenshaw's Let's Build A Compiler"
+version = "0.0.1"
+
+authors = ["Anuj Seth"]
+maintainers = ["Anuj Seth <anujseth76@gmail.com>"]
+maintainers-logins = ["anuj-seth"]
+
+executables = ["lets_build_a_compiler"]

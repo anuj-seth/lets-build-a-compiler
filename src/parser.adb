@@ -16,18 +16,20 @@ package body Parser is
 
    procedure Match (X : Character) is
    begin
+      Cradle.Enter_Fn (Fn_Name => "Match");
       if Look = X then
          Get_Char;
       else
          Cradle.Expected (S => "'" & X & "'");
       end if;
+      Cradle.Exit_Fn (Fn_Name => "Match");
    end Match;
 
    function Get_Name return Character is
       Result : Character;
    begin
       if not Cradle.Is_Alpha (X => Look) then
-         Cradle.Expected ( S => "Name");
+         Cradle.Expected (S => "Name");
       end if;
 
       Result := CH.To_Upper (Item => Look);
@@ -47,6 +49,20 @@ package body Parser is
       return Result;
    end Get_Num;
 
+   procedure Identifier is
+      Name : constant Character := Get_Name;
+   begin
+      if Look = '(' then
+         Match (X => '(');
+         Match (X => ')');
+         Cradle.Emit_Line ("BSR " & Name);
+      else
+         Cradle.Emit_Line (S => "MOVE "
+                                & Name
+                                & "(PC), D0");
+      end if;
+   end Identifier;
+
    procedure Factor is
    begin
       Cradle.Enter_Fn (Fn_Name => "Factor");
@@ -54,6 +70,8 @@ package body Parser is
          Match ('(');
          Expression;
          Match (')');
+      elsif Cradle.Is_Alpha (X => Look) then
+         Identifier;
       else
          Cradle.Emit_Line (S => "MOVE #"
                                 & Get_Num

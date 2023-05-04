@@ -23,9 +23,9 @@ package body Cradle is
 
       FUNCTION_DEPTH := FUNCTION_DEPTH + 1;
       for I in 1 .. FUNCTION_DEPTH loop
-         TIO.Put (CL1.Space);
+         TIO.Put (Item => CL1.Space);
       end loop;
-      TIO.Put_Line ("->" & Fn_Name);
+      TIO.Put_Line (Item => "->" & Fn_Name);
    end Enter_Fn;
 
    procedure Exit_Fn (Fn_Name : String) is
@@ -35,28 +35,28 @@ package body Cradle is
       end if;
 
       for I in 1 .. FUNCTION_DEPTH loop
-         TIO.Put (CL1.Space);
+         TIO.Put (Item => CL1.Space);
       end loop;
-      TIO.Put_Line ("<-" & Fn_Name);
+      TIO.Put_Line (Item => "<-" & Fn_Name);
       FUNCTION_DEPTH := FUNCTION_DEPTH - 1;
    end Exit_Fn;
 
    procedure Error (S : String) is
    begin
       TIO.New_Line;
-      TIO.Put (CL1.BEL);
-      TIO.Put_Line ("Error: " & S & ".");
+      TIO.Put (Item => CL1.BEL);
+      TIO.Put_Line (Item => "Error: " & S & ".");
    end Error;
 
    procedure Halt (S : String) is
    begin
-      Error (S);
+      Error (S => S);
       raise Halt_Exception;
    end Halt;
 
    procedure Expected (S : String) is
    begin
-      Halt (S & " Expected");
+      Halt (S => S & " Expected");
    end Expected;
 
    function Is_Alpha (X : Character) return Boolean
@@ -65,15 +65,18 @@ package body Cradle is
    function Is_Digit (X : Character) return Boolean
       renames CH.Is_Digit;
 
+   function Is_Alphanumeric (X : Character) return Boolean is
+      (Is_Alpha (X => X) or else Is_Digit (X => X));
+
    procedure Emit (S : String) is
    begin
-      TIO.Put (CL1.HT);
-      TIO.Put (S);
+      TIO.Put (Item => CL1.HT);
+      TIO.Put (Item => S);
    end Emit;
 
    procedure Emit_Line (S : String) is
    begin
-      Emit (S);
+      Emit (S => S);
       TIO.New_Line;
    end Emit_Line;
 

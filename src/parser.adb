@@ -7,9 +7,14 @@ package body Parser is
    package TIO renames Ada.Text_IO;
    package CH renames Ada.Characters.Handling;
 
+   function Is_End_Of_Line return Boolean is
+      (TIO.End_Of_Line);
+
    procedure Get_Char is
    begin
-      if not TIO.End_Of_Line then
+      if Is_End_Of_Line then
+         Look := Cradle.End_Of_Line_Character;
+      else
          TIO.Get (Item => Look);
       end if;
    end Get_Char;
@@ -55,7 +60,7 @@ package body Parser is
       if Look = '(' then
          Match (X => '(');
          Match (X => ')');
-         Cradle.Emit_Line ("BSR " & Name);
+         Cradle.Emit_Line (S => "BSR " & Name);
       else
          Cradle.Emit_Line (S => "MOVE "
                                 & Name
@@ -67,9 +72,9 @@ package body Parser is
    begin
       Cradle.Enter_Fn (Fn_Name => "Factor");
       if Look = '(' then
-         Match ('(');
+         Match (X => '(');
          Expression;
-         Match (')');
+         Match (X => ')');
       elsif Cradle.Is_Alpha (X => Look) then
          Identifier;
       else
@@ -103,14 +108,11 @@ package body Parser is
       Mulop_Loop :
       while Look = '*' or else Look = '/' loop
          Cradle.Emit_Line (S => "Move D0, -(SP)");
-         case Look is
-            when '*' =>
-               Multiply;
-            when '/' =>
-               Divide;
-            when others  =>
-               Cradle.Expected (S => "Mulop");
-         end case;
+         if Look = '*' then
+            Multiply;
+         elsif Look = '/' then
+            Divide;
+         end if;
       end loop Mulop_Loop;
       Cradle.Exit_Fn (Fn_Name => "Term");
    end Term;
@@ -147,15 +149,16 @@ package body Parser is
       Addop_Loop :
       while Is_Addop (Look) loop
          Cradle.Emit_Line (S => "Move D0, -(SP)");
-         case Look is
-            when '+' =>
-               Add;
-            when '-' =>
-               Subtract;
-            when others =>
-               Cradle.Expected (S => "Addop");
-         end case;
+         if Look = '+' then
+            Add;
+         elsif Look = '-' then
+            Subtract;
+         end if;
       end loop Addop_Loop;
+
+      if not Is_End_Of_Line then
+         Cradle.Expected (S => "Newline");
+      end if;
       Cradle.Exit_Fn (Fn_Name => "Expression");
    end Expression;
 

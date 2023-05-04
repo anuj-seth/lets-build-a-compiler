@@ -12,6 +12,9 @@ package body Cradle is
    DEBUG : Boolean;
    FUNCTION_DEPTH : Natural := 1;
 
+   function End_Of_Line_Character return Character is
+      (CL1.LF);
+
    procedure Enter_Fn (Fn_Name : String) is
    begin
       if not DEBUG then

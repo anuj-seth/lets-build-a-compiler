@@ -1,5 +1,6 @@
 package Cradle is
    Halt_Exception : exception;
+   function End_Of_Line_Character return Character;
    procedure Error (S : String);
    procedure Halt (S : String);
    procedure Expected (S : String);

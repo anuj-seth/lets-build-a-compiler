@@ -4,6 +4,7 @@ package Parser is
 
 private
    Look : Character;
+   function Is_End_Of_Line return Boolean;
    procedure Get_Char;
    procedure Match (X : Character);
    function Get_Name return Character;

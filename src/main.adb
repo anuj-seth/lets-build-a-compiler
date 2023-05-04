@@ -4,7 +4,7 @@ with Parser;
 procedure Main is
 begin
    Parser.Init;
-   Parser.Expression;
+   Parser.Assignment;
 exception
    when Cradle.Halt_Exception =>
       null;

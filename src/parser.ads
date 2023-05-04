@@ -1,5 +1,5 @@
 package Parser is
-   procedure Expression;
+   procedure Assignment;
    procedure Init;
 
 private
@@ -16,4 +16,5 @@ private
    procedure Add;
    procedure Subtract;
    function Is_Addop (C : Character) return Boolean;
+   procedure Expression;
 end Parser;

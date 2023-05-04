@@ -162,6 +162,18 @@ package body Parser is
       Cradle.Exit_Fn (Fn_Name => "Expression");
    end Expression;
 
+   procedure Assignment is
+      Name : Character;
+   begin
+      Name := Get_Name;
+      Match (X => '=');
+      Expression;
+      Cradle.Emit_Line (S => "LEA "
+                             & Name
+                             & "(PC), A0");
+      Cradle.Emit_Line (S => "MOVE D0, (A0)");
+   end Assignment;
+
    procedure Init is
    begin
       Get_Char;

@@ -19,6 +19,24 @@ package body Parser is
       end if;
    end Get_Char;
 
+   function Get_Char_While_True (Predicate : Lookahead_Predicate_Type;
+                                 Till_Now : String) return String is
+   begin
+      if Predicate (X => Look) then
+         declare
+            Name : String (1 .. Till_Now'Length + 1);
+         begin
+            Name (1 .. Name'Length - 1) := Till_Now;
+            Name (Name'Length) := CH.To_Upper (Look);
+            Get_Char;
+            return Get_Char_While_True (Predicate => Predicate,
+                                        Till_Now => Name);
+         end;
+      else
+         return Till_Now;
+      end if;
+   end Get_Char_While_True;
+
    procedure Match (X : Character) is
    begin
       Cradle.Enter_Fn (Fn_Name => "Match");
@@ -30,32 +48,28 @@ package body Parser is
       Cradle.Exit_Fn (Fn_Name => "Match");
    end Match;
 
-   function Get_Name return Character is
-      Result : Character;
+   function Get_Name return String is
    begin
       if not Cradle.Is_Alpha (X => Look) then
          Cradle.Expected (S => "Name");
       end if;
 
-      Result := CH.To_Upper (Item => Look);
-      Get_Char;
-      return Result;
+      return Get_Char_While_True (Predicate => Cradle.Is_Alphanumeric'access, 
+                                  Till_Now => "");
    end Get_Name;
 
-   function Get_Num return Character is
-      Result : Character;
+   function Get_Num return String is
    begin
       if not Cradle.Is_Digit (X => Look) then
          Cradle.Expected (S => "Integer");
       end if;
 
-      Result := Look;
-      Get_Char;
-      return Result;
+      return Get_Char_While_True (Predicate => Cradle.Is_Digit'access,
+                                  Till_Now => "");
    end Get_Num;
 
    procedure Identifier is
-      Name : constant Character := Get_Name;
+      Name : constant String := Get_Name;
    begin
       if Look = '(' then
          Match (X => '(');
@@ -107,7 +121,7 @@ package body Parser is
       Factor;
       Mulop_Loop :
       while Look = '*' or else Look = '/' loop
-         Cradle.Emit_Line (S => "Move D0, -(SP)");
+         Cradle.Emit_Line (S => "MOVE D0, -(SP)");
          if Look = '*' then
             Multiply;
          elsif Look = '/' then
@@ -148,7 +162,7 @@ package body Parser is
 
       Addop_Loop :
       while Is_Addop (Look) loop
-         Cradle.Emit_Line (S => "Move D0, -(SP)");
+         Cradle.Emit_Line (S => "MOVE D0, -(SP)");
          if Look = '+' then
             Add;
          elsif Look = '-' then
@@ -163,9 +177,8 @@ package body Parser is
    end Expression;
 
    procedure Assignment is
-      Name : Character;
+      Name : constant String := Get_Name;
    begin
-      Name := Get_Name;
       Match (X => '=');
       Expression;
       Cradle.Emit_Line (S => "LEA "

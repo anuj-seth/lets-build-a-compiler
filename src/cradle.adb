@@ -59,6 +59,9 @@ package body Cradle is
       Halt (S => S & " Expected");
    end Expected;
 
+   function Is_Space (X : Character) return Boolean is
+      (CH.Is_Space (Item => X) or else X = CL1.HT);
+
    function Is_Alpha (X : Character) return Boolean
       renames CH.Is_Letter;
 

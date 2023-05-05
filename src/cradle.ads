@@ -4,6 +4,7 @@ package Cradle is
    procedure Error (S : String);
    procedure Halt (S : String);
    procedure Expected (S : String);
+   function Is_Space (X : Character) return Boolean;
    function Is_Alpha (X : Character) return Boolean;
    function Is_Digit (X : Character) return Boolean;
    function Is_Alphanumeric (X : Character) return Boolean;

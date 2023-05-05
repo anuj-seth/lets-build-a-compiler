@@ -37,11 +37,19 @@ package body Parser is
       end if;
    end Get_Char_While_True;
 
+   procedure Skip_Whitespace is
+   begin
+      while Cradle.Is_Space (Look) loop
+         Get_Char;
+      end loop;
+   end Skip_Whitespace;
+
    procedure Match (X : Character) is
    begin
       Cradle.Enter_Fn (Fn_Name => "Match");
       if Look = X then
          Get_Char;
+         Skip_Whitespace;
       else
          Cradle.Expected (S => "'" & X & "'");
       end if;
@@ -54,8 +62,14 @@ package body Parser is
          Cradle.Expected (S => "Name");
       end if;
 
-      return Get_Char_While_True (Predicate => Cradle.Is_Alphanumeric'access, 
-                                  Till_Now => "");
+      declare
+         Name : constant String :=
+            Get_Char_While_True (Predicate => Cradle.Is_Alphanumeric'access,
+                                 Till_Now => "");
+      begin
+         Skip_Whitespace;
+         return Name;
+      end;
    end Get_Name;
 
    function Get_Num return String is
@@ -64,8 +78,14 @@ package body Parser is
          Cradle.Expected (S => "Integer");
       end if;
 
-      return Get_Char_While_True (Predicate => Cradle.Is_Digit'access,
-                                  Till_Now => "");
+      declare
+         Num : constant String :=
+            Get_Char_While_True (Predicate => Cradle.Is_Digit'access,
+                                 Till_Now => "");
+      begin
+         Skip_Whitespace;
+         return Num;
+      end;
    end Get_Num;
 
    procedure Identifier is
@@ -190,5 +210,6 @@ package body Parser is
    procedure Init is
    begin
       Get_Char;
+      Skip_Whitespace;
    end Init;
 end Parser;

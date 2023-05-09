@@ -168,20 +168,17 @@ package body Parser is
       Cradle.Emit_Line (S => "NEG D0");
    end Subtract;
 
-   function Is_Addop (C : Character) return Boolean is
-      (C = '+' or else C = '-');
-
    procedure Expression is
    begin
       Cradle.Enter_Fn (Fn_Name => "Expression");
-      if Is_Addop (Look) then
+      if Cradle.Is_Addop (Look) then
          Cradle.Emit_Line ("CLR D0");
       else
          Term;
       end if;
 
       Addop_Loop :
-      while Is_Addop (Look) loop
+      while Cradle.Is_Addop (Look) loop
          Cradle.Emit_Line (S => "MOVE D0, -(SP)");
          if Look = '+' then
             Add;

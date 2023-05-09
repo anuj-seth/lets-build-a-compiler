@@ -8,6 +8,8 @@ package Cradle is
    function Is_Alpha (X : Character) return Boolean;
    function Is_Digit (X : Character) return Boolean;
    function Is_Alphanumeric (X : Character) return Boolean;
+   function Is_Addop (X : Character) return Boolean;
+   function Is_Mulop (X : Character) return Boolean;
    procedure Emit (S : String);
    procedure Emit_Line (S : String);
    procedure Enter_Fn (Fn_Name : String);

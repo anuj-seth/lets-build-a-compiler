@@ -20,6 +20,5 @@ private
    procedure Term;
    procedure Add;
    procedure Subtract;
-   function Is_Addop (C : Character) return Boolean;
    procedure Expression;
 end Parser;

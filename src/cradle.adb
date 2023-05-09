@@ -71,6 +71,12 @@ package body Cradle is
    function Is_Alphanumeric (X : Character) return Boolean is
       (Is_Alpha (X => X) or else Is_Digit (X => X));
 
+   function Is_Mulop (X : Character) return Boolean is
+      (X = '*' or else X = '/');
+
+   function Is_Addop (X : Character) return Boolean is
+      (X = '+' or else X = '-');
+
    procedure Emit (S : String) is
    begin
       TIO.Put (Item => CL1.HT);

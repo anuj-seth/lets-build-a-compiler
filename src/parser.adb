@@ -2,98 +2,18 @@ with Ada.Text_IO;
 with Ada.Characters.Handling;
 
 with Cradle;
+with Reader;
 
 package body Parser is
    package TIO renames Ada.Text_IO;
    package CH renames Ada.Characters.Handling;
 
-   function Is_End_Of_Line return Boolean is
-      (TIO.End_Of_Line);
-
-   procedure Get_Char is
-   begin
-      if Is_End_Of_Line then
-         Look := Cradle.End_Of_Line_Character;
-      else
-         TIO.Get (Item => Look);
-      end if;
-   end Get_Char;
-
-   function Get_Char_While_True (Predicate : Lookahead_Predicate_Type;
-                                 Till_Now : String) return String is
-   begin
-      if Predicate (X => Look) then
-         declare
-            Name : String (1 .. Till_Now'Length + 1);
-         begin
-            Name (1 .. Name'Length - 1) := Till_Now;
-            Name (Name'Length) := CH.To_Upper (Look);
-            Get_Char;
-            return Get_Char_While_True (Predicate => Predicate,
-                                        Till_Now => Name);
-         end;
-      else
-         return Till_Now;
-      end if;
-   end Get_Char_While_True;
-
-   procedure Skip_Whitespace is
-   begin
-      while Cradle.Is_Space (Look) loop
-         Get_Char;
-      end loop;
-   end Skip_Whitespace;
-
-   procedure Match (X : Character) is
-   begin
-      Cradle.Enter_Fn (Fn_Name => "Match");
-      if Look = X then
-         Get_Char;
-         Skip_Whitespace;
-      else
-         Cradle.Expected (S => "'" & X & "'");
-      end if;
-      Cradle.Exit_Fn (Fn_Name => "Match");
-   end Match;
-
-   function Get_Name return String is
-   begin
-      if not Cradle.Is_Alpha (X => Look) then
-         Cradle.Expected (S => "Name");
-      end if;
-
-      declare
-         Name : constant String :=
-            Get_Char_While_True (Predicate => Cradle.Is_Alphanumeric'access,
-                                 Till_Now => "");
-      begin
-         Skip_Whitespace;
-         return Name;
-      end;
-   end Get_Name;
-
-   function Get_Num return String is
-   begin
-      if not Cradle.Is_Digit (X => Look) then
-         Cradle.Expected (S => "Integer");
-      end if;
-
-      declare
-         Num : constant String :=
-            Get_Char_While_True (Predicate => Cradle.Is_Digit'access,
-                                 Till_Now => "");
-      begin
-         Skip_Whitespace;
-         return Num;
-      end;
-   end Get_Num;
-
    procedure Identifier is
-      Name : constant String := Get_Name;
+      Name : constant String := Reader.Get_Name;
    begin
-      if Look = '(' then
-         Match (X => '(');
-         Match (X => ')');
+      if Reader.Look = '(' then
+         Reader.Match (X => '(');
+         Reader.Match (X => ')');
          Cradle.Emit_Line (S => "BSR " & Name);
       else
          Cradle.Emit_Line (S => "MOVE "
@@ -105,15 +25,15 @@ package body Parser is
    procedure Factor is
    begin
       Cradle.Enter_Fn (Fn_Name => "Factor");
-      if Look = '(' then
-         Match (X => '(');
+      if Reader.Look = '(' then
+         Reader.Match (X => '(');
          Expression;
-         Match (X => ')');
-      elsif Cradle.Is_Alpha (X => Look) then
+         Reader.Match (X => ')');
+      elsif Cradle.Is_Alpha (X => Reader.Look) then
          Identifier;
       else
          Cradle.Emit_Line (S => "MOVE #"
-                                & Get_Num
+                                & Reader.Get_Num
                                 & ", D0");
       end if;
       Cradle.Exit_Fn (Fn_Name => "Factor");
@@ -122,7 +42,7 @@ package body Parser is
    procedure Multiply is
    begin
       Cradle.Enter_Fn (Fn_Name => "Multiply");
-      Match (X => '*');
+      Reader.Match (X => '*');
       Factor;
       Cradle.Emit_Line (S => "MULS (SP)+, D0");
       Cradle.Enter_Fn (Fn_Name => "Multiply");
@@ -130,7 +50,7 @@ package body Parser is
 
    procedure Divide is
    begin
-      Match (X => '/');
+      Reader.Match (X => '/');
       Factor;
       Cradle.Emit_Line (S => "DIVS D0, -(SP)");
    end Divide;
@@ -140,11 +60,11 @@ package body Parser is
       Cradle.Enter_Fn (Fn_Name => "Term");
       Factor;
       Mulop_Loop :
-      while Look = '*' or else Look = '/' loop
+      while Reader.Look = '*' or else Reader.Look = '/' loop
          Cradle.Emit_Line (S => "MOVE D0, -(SP)");
-         if Look = '*' then
+         if Reader.Look = '*' then
             Multiply;
-         elsif Look = '/' then
+         elsif Reader.Look = '/' then
             Divide;
          end if;
       end loop Mulop_Loop;
@@ -154,7 +74,7 @@ package body Parser is
    procedure Add is
    begin
       Cradle.Enter_Fn (Fn_Name => "Add");
-      Match (X => '+');
+      Reader.Match (X => '+');
       Term;
       Cradle.Emit_Line (S => "ADD (SP)+, D0");
       Cradle.Exit_Fn (Fn_Name => "Add");
@@ -162,7 +82,7 @@ package body Parser is
 
    procedure Subtract is
    begin
-      Match (X => '-');
+      Reader.Match (X => '-');
       Term;
       Cradle.Emit_Line (S => "SUB (SP)+, D0");
       Cradle.Emit_Line (S => "NEG D0");
@@ -171,32 +91,32 @@ package body Parser is
    procedure Expression is
    begin
       Cradle.Enter_Fn (Fn_Name => "Expression");
-      if Cradle.Is_Addop (Look) then
+      if Cradle.Is_Addop (Reader.Look) then
          Cradle.Emit_Line ("CLR D0");
       else
          Term;
       end if;
 
       Addop_Loop :
-      while Cradle.Is_Addop (Look) loop
+      while Cradle.Is_Addop (Reader.Look) loop
          Cradle.Emit_Line (S => "MOVE D0, -(SP)");
-         if Look = '+' then
+         if Reader.Look = '+' then
             Add;
-         elsif Look = '-' then
+         elsif Reader.Look = '-' then
             Subtract;
          end if;
       end loop Addop_Loop;
 
-      if not Is_End_Of_Line then
+      if not Reader.Is_End_Of_Line then
          Cradle.Expected (S => "Newline");
       end if;
       Cradle.Exit_Fn (Fn_Name => "Expression");
    end Expression;
 
    procedure Assignment is
-      Name : constant String := Get_Name;
+      Name : constant String := Reader.Get_Name;
    begin
-      Match (X => '=');
+      Reader.Match (X => '=');
       Expression;
       Cradle.Emit_Line (S => "LEA "
                              & Name
@@ -206,7 +126,7 @@ package body Parser is
 
    procedure Init is
    begin
-      Get_Char;
-      Skip_Whitespace;
+      Reader.Get_Char;
+      Reader.Skip_Whitespace;
    end Init;
 end Parser;

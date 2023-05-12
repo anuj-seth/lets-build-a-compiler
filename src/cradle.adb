@@ -15,6 +15,18 @@ package body Cradle is
    function End_Of_Line_Character return Character is
       (CL1.LF);
 
+   function Is_Space (X : Character) return Boolean is
+      (CH.Is_Space (Item => X) or else X = CL1.HT);
+
+   function Is_Alpha (X : Character) return Boolean
+      renames CH.Is_Letter;
+
+   function Is_Digit (X : Character) return Boolean
+      renames CH.Is_Digit;
+
+   function Is_Alphanumeric (X : Character) return Boolean is
+      (Is_Alpha (X => X) or else Is_Digit (X => X));
+
    procedure Enter_Fn (Fn_Name : String) is
    begin
       if not DEBUG then
@@ -58,18 +70,6 @@ package body Cradle is
    begin
       Halt (S => S & " Expected");
    end Expected;
-
-   function Is_Space (X : Character) return Boolean is
-      (CH.Is_Space (Item => X) or else X = CL1.HT);
-
-   function Is_Alpha (X : Character) return Boolean
-      renames CH.Is_Letter;
-
-   function Is_Digit (X : Character) return Boolean
-      renames CH.Is_Digit;
-
-   function Is_Alphanumeric (X : Character) return Boolean is
-      (Is_Alpha (X => X) or else Is_Digit (X => X));
 
    function Is_Mulop (X : Character) return Boolean is
       (X = '*' or else X = '/');

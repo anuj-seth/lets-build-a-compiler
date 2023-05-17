@@ -9,8 +9,20 @@ package body Reader is
    package CH renames Ada.Characters.Handling;
    package CL1 renames Ada.Characters.Latin_1;
 
-   function Is_End_Of_Line return Boolean is
-      (TIO.End_Of_Line);
+   function Is_End_Of_Line return Boolean
+      renames TIO.End_Of_Line;
+
+   procedure Skip_Line is
+   begin
+      TIO.Skip_Line (File => TIO.Standard_Input);
+   end Skip_Line;
+
+   procedure Consume_New_Line is
+   begin
+      if Is_End_Of_Line then
+         Skip_Line;
+      end if;
+   end Consume_New_Line;
 
    function Look return Character is
       (Look_Ahead);

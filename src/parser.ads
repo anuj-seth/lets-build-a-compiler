@@ -1,6 +1,7 @@
 package Parser is
-   procedure Assignment;
    procedure Init;
+   procedure Assignment;
+   procedure Program;
 
 private
    procedure Factor;
@@ -10,4 +11,5 @@ private
    procedure Add;
    procedure Subtract;
    procedure Expression;
+   procedure Block;
 end Parser;

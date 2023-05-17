@@ -124,6 +124,31 @@ package body Parser is
       Cradle.Emit_Line (S => "MOVE D0, (A0)");
    end Assignment;
 
+   procedure Other is
+   begin
+      Cradle.Emit_Line (S => Reader.Get_Name);
+   end Other;
+
+   procedure Block is
+   begin
+      Block_Loop :
+      loop
+         exit Block_Loop when Reader.Look = 'e';
+         Other;
+         Reader.Consume_New_Line;
+         Init;
+      end loop Block_Loop;
+   end Block;
+
+   procedure Program is
+   begin
+      Block;
+      if Reader.Look /= 'e' then
+         Cradle.Expected (S => "End");
+      end if;
+      Cradle.Emit_Line (S => "END");
+   end Program;
+
    procedure Init is
    begin
       Reader.Get_Char;

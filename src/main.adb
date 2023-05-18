@@ -4,12 +4,14 @@ with Ada.Text_IO;
 with Cradle;
 with Parser;
 with Interpreter;
+with Calculator;
 
 procedure Main is
    package CMD renames Ada.Command_Line;
 begin
    if CMD.Argument_Count < 1 then
-      Ada.Text_IO.Put_Line ("Mode required: interpreter or compiler");
+      Ada.Text_IO.Put_Line ("Mode required: "
+                            & "interpreter or compiler or calculator");
       return;
    end if;
 
@@ -22,9 +24,12 @@ begin
          Parser.Program;
       elsif Mode = "interpreter" then
          Interpreter.Run;
+      elsif Mode = "calculator" then
+         Calculator.Run;
       else
-         Ada.Text_IO.Put_Line ("Invalid mode argument." &
-                               " Only compiler or interpreter supported");
+         Ada.Text_IO.Put_Line ("Invalid mode argument."
+                               & " Only compiler or interpreter "
+                               & "or calculator supported");
       end if;
    end;
 exception

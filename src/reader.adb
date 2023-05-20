@@ -95,7 +95,7 @@ package body Reader is
 
       declare
          Num : constant String :=
-            Get_Char_While_True (Predicate => Cradle.Is_Digit'access,
+            Get_Char_While_True (Predicate => Cradle.Is_Digit'Access,
                                  Till_Now => "");
       begin
          Skip_Whitespace;

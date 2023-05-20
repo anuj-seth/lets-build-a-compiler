@@ -1,4 +1,4 @@
-package Parser is
+package Compiler is
    procedure Init;
    procedure Assignment;
    procedure Program;
@@ -12,4 +12,4 @@ private
    procedure Subtract;
    procedure Expression;
    procedure Block;
-end Parser;
+end Compiler;

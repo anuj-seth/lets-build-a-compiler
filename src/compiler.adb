@@ -1,13 +1,7 @@
-with Ada.Text_IO;
-with Ada.Characters.Handling;
-
 with Cradle;
 with Reader;
 
-package body Parser is
-   package TIO renames Ada.Text_IO;
-   package CH renames Ada.Characters.Handling;
-
+package body Compiler is
    procedure Identifier is
       Name : constant String := Reader.Get_Name;
    begin
@@ -60,7 +54,7 @@ package body Parser is
       Cradle.Enter_Fn (Fn_Name => "Term");
       Factor;
       Mulop_Loop :
-      while Reader.Look = '*' or else Reader.Look = '/' loop
+      while Reader.Look in '*' | '/' loop
          Cradle.Emit_Line (S => "MOVE D0, -(SP)");
          if Reader.Look = '*' then
             Multiply;
@@ -154,4 +148,4 @@ package body Parser is
       Reader.Get_Char;
       Reader.Skip_Whitespace;
    end Init;
-end Parser;
+end Compiler;

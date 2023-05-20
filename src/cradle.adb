@@ -27,6 +27,12 @@ package body Cradle is
    function Is_Alphanumeric (X : Character) return Boolean is
       (Is_Alpha (X => X) or else Is_Digit (X => X));
 
+   function Is_Mulop (X : Character) return Boolean is
+      (X in '*' | '/');
+
+   function Is_Addop (X : Character) return Boolean is
+      (X in '+' | '-');
+
    procedure Enter_Fn (Fn_Name : String) is
    begin
       if not DEBUG then
@@ -70,12 +76,6 @@ package body Cradle is
    begin
       Halt (S => S & " Expected");
    end Expected;
-
-   function Is_Mulop (X : Character) return Boolean is
-      (X = '*' or else X = '/');
-
-   function Is_Addop (X : Character) return Boolean is
-      (X = '+' or else X = '-');
 
    procedure Emit (S : String) is
    begin

@@ -2,7 +2,7 @@ with Ada.Command_Line;
 with Ada.Text_IO;
 
 with Cradle;
-with Parser;
+with Compiler;
 with Interpreter;
 with Calculator;
 
@@ -19,9 +19,9 @@ begin
       Mode : constant String := CMD.Argument (1);
    begin
       if Mode = "compiler" then
-         Parser.Init;
+         Compiler.Init;
          --  Parser.Assignment;
-         Parser.Program;
+         Compiler.Program;
       elsif Mode = "interpreter" then
          Interpreter.Run;
       elsif Mode = "calculator" then

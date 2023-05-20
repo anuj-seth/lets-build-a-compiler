@@ -1,13 +1,11 @@
 with Ada.Text_IO;
 with Ada.Characters.Handling;
-with Ada.Characters.Latin_1;
 
 with Cradle;
 
 package body Reader is
    package TIO renames Ada.Text_IO;
    package CH renames Ada.Characters.Handling;
-   package CL1 renames Ada.Characters.Latin_1;
 
    function Is_End_Of_Line return Boolean
       renames TIO.End_Of_Line;
@@ -81,7 +79,7 @@ package body Reader is
 
       declare
          Name : constant String :=
-            Get_Char_While_True (Predicate => Cradle.Is_Alphanumeric'access,
+            Get_Char_While_True (Predicate => Cradle.Is_Alphanumeric'Access,
                                  Till_Now => "");
       begin
          Skip_Whitespace;

@@ -39,8 +39,7 @@ package body Calculator is
    begin
       Value := Term;
       Addops_Loop :
-      while Reader.Look =  '+'
-         or else Reader.Look = '-' loop
+      while Reader.Look in '+' | '-' loop
          if Reader.Look = '+' then
             Reader.Match (X => '+');
             Value := Value + Term;

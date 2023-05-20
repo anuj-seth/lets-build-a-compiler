@@ -1,13 +1,10 @@
 with Ada.Text_IO;
 with Ada.Integer_Text_IO;
-with Ada.Characters.Handling;
 
 with Cradle;
 with Reader;
 
 package body Interpreter is
-   package TIO renames Ada.Text_IO;
-   package CH renames Ada.Characters.Handling;
 
    function Factor return Integer is
       Value : Integer;

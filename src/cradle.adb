@@ -1,6 +1,7 @@
 with Ada.Text_IO;
 with Ada.Characters.Latin_1;
 with Ada.Characters.Handling;
+with Ada.Strings.Fixed;
 with Ada.Environment_Variables;
 
 package body Cradle is
@@ -88,6 +89,14 @@ package body Cradle is
       Emit (S => S);
       TIO.New_Line;
    end Emit_Line;
+
+   function Integer_To_String (I : Integer) return String is
+      use Ada.Strings.Fixed;
+      S : constant String := Trim (Integer'Image (I),
+                                   Ada.Strings.Left);
+   begin
+      return S;
+   end Integer_To_String;
 
 begin
    declare

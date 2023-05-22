@@ -14,4 +14,5 @@ package Cradle is
    function Is_Alphanumeric (X : Character) return Boolean;
    function Is_Addop (X : Character) return Boolean;
    function Is_Mulop (X : Character) return Boolean;
+   function Integer_To_String (I : Integer) return String;
 end Cradle;

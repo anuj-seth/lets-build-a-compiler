@@ -2,6 +2,21 @@ with Cradle;
 with Reader;
 
 package body Compiler is
+   Label_Count : Natural := 0;
+
+   function New_Label return String is
+      Label : constant String := "L"
+                                 & Cradle.Integer_To_String (I => Label_Count);
+   begin
+      Label_Count := Label_Count + 1;
+      return Label;
+   end New_Label;
+
+   procedure Post_Label (L : String) is
+   begin
+      Cradle.Emit_Line (S => L & ":");
+   end Post_Label;
+
    procedure Identifier is
       Name : constant String := Reader.Get_Name;
    begin
@@ -120,32 +135,65 @@ package body Compiler is
 
    procedure Other is
    begin
+      Cradle.Enter_Fn (Fn_Name => "Other");
       Cradle.Emit_Line (S => Reader.Get_Name);
+      Cradle.Exit_Fn (Fn_Name => "Other");
    end Other;
+
+   procedure Condition is
+   begin
+      Cradle.Emit_Line (S => "<condition>");
+   end Condition;
+
+   procedure Do_If is
+      L : constant String := New_Label;
+   begin
+      Cradle.Enter_Fn (Fn_Name => "Do_If");
+      Reader.Match (X => 'i');
+      Condition;
+      Cradle.Emit_Line (S => "BEQ " & L);
+      Block;
+      Reader.Match (X => 'e');
+      Post_Label (L => L);
+      Cradle.Exit_Fn (Fn_Name => "Do_If");
+   end Do_If;
 
    procedure Block is
    begin
+      Cradle.Enter_Fn (Fn_Name => "Block");
       Block_Loop :
       loop
          exit Block_Loop when Reader.Look = 'e';
-         Other;
+         --  Cradle.Emit_Line ("1 Look is " & Reader.Look);
+         if Reader.Look = 'i' then
+            Do_If;
+         else
+            Other;
+         end if;
+         --  Cradle.Emit_Line ("2 Look is " & Reader.Look);
          Reader.Consume_New_Line;
-         Init;
+         --  Init;
+         --  Cradle.Emit_Line ("3 Look is " & Reader.Look);
       end loop Block_Loop;
+      Cradle.Exit_Fn (Fn_Name => "Block");
    end Block;
 
    procedure Program is
    begin
+      Cradle.Enter_Fn (Fn_Name => "Program");
       Block;
       if Reader.Look /= 'e' then
          Cradle.Expected (S => "End");
       end if;
       Cradle.Emit_Line (S => "END");
+      Cradle.Exit_Fn (Fn_Name => "Program");
    end Program;
 
    procedure Init is
    begin
+      Cradle.Enter_Fn (Fn_Name => "Init");
       Reader.Get_Char;
       Reader.Skip_Whitespace;
+      Cradle.Exit_Fn (Fn_Name => "Init");
    end Init;
 end Compiler;

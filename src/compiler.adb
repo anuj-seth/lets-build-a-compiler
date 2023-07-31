@@ -2,198 +2,122 @@ with Cradle;
 with Reader;
 
 package body Compiler is
-   Label_Count : Natural := 0;
 
-   function New_Label return String is
-      Label : constant String := "L"
-                                 & Cradle.Integer_To_String (I => Label_Count);
-   begin
-      Label_Count := Label_Count + 1;
-      return Label;
-   end New_Label;
-
-   procedure Post_Label (L : String) is
-   begin
-      Cradle.Emit_Line (S => L & ":");
-   end Post_Label;
-
-   procedure Identifier is
-      Name : constant String := Reader.Get_Name;
+   procedure Factor (Current_Frame : in out Frame) is
    begin
       if Reader.Look = '(' then
          Reader.Match (X => '(');
-         Reader.Match (X => ')');
-         Cradle.Emit_Line (S => "BSR " & Name);
-      else
-         Cradle.Emit_Line (S => "MOVE "
-                                & Name
-                                & "(PC), D0");
-      end if;
-   end Identifier;
-
-   procedure Factor is
-   begin
-      Cradle.Enter_Fn (Fn_Name => "Factor");
-      if Reader.Look = '(' then
-         Reader.Match (X => '(');
-         Expression;
+         Expression (Current_Frame => Current_Frame);
          Reader.Match (X => ')');
       elsif Cradle.Is_Alpha (X => Reader.Look) then
-         Identifier;
+         declare
+            Variable_Name : constant String := Reader.Get_Name;
+            Offset : constant Integer := Current_Frame.Variable_Offsets (Variable_Name);
+         begin
+            Cradle.Emit_Line (S => "ldr r0, [fp, -"
+                                   & Integer'Image (Offset)
+                                   & "]");
+         end;
       else
-         Cradle.Emit_Line (S => "MOVE #"
-                                & Reader.Get_Num
-                                & ", D0");
+         Cradle.Emit_Line (S => "mov r0, #"
+                                & Reader.Get_Num);
       end if;
-      Cradle.Exit_Fn (Fn_Name => "Factor");
    end Factor;
 
-   procedure Multiply is
+   procedure Multiply (Current_Frame : in out Frame) is
    begin
-      Cradle.Enter_Fn (Fn_Name => "Multiply");
       Reader.Match (X => '*');
-      Factor;
-      Cradle.Emit_Line (S => "MULS (SP)+, D0");
-      Cradle.Enter_Fn (Fn_Name => "Multiply");
+      Factor (Current_Frame => Current_Frame);
+      Cradle.Emit_Line (S => "pop {r1}");
+      Cradle.Emit_Line (S => "mul r0, r1");
    end Multiply;
 
-   procedure Divide is
+   procedure Divide (Current_Frame : in out Frame) is
    begin
       Reader.Match (X => '/');
-      Factor;
-      Cradle.Emit_Line (S => "DIVS D0, -(SP)");
+      Factor (Current_Frame => Current_Frame);
+      Cradle.Emit_Line (S => "pop {r1}");
+      Cradle.Emit_Line (S => "sdiv r0, r1, r0");
    end Divide;
 
-   procedure Term is
+   procedure Term (Current_Frame : in out Frame) is
    begin
-      Cradle.Enter_Fn (Fn_Name => "Term");
-      Factor;
+      Factor (Current_Frame => Current_Frame);
+
       Mulop_Loop :
-      while Reader.Look in '*' | '/' loop
-         Cradle.Emit_Line (S => "MOVE D0, -(SP)");
+      while Cradle.Is_Mulop (Reader.Look) loop
+         Cradle.Emit_Line (S => "push {r0}");
          if Reader.Look = '*' then
-            Multiply;
+            Multiply (Current_Frame => Current_Frame);
          elsif Reader.Look = '/' then
-            Divide;
+            Divide (Current_Frame => Current_Frame);
+         else
+            Cradle.Expected (S => "Mulop");
          end if;
       end loop Mulop_Loop;
-      Cradle.Exit_Fn (Fn_Name => "Term");
    end Term;
 
-   procedure Add is
+   procedure Add (Current_Frame : in out Frame) is
    begin
-      Cradle.Enter_Fn (Fn_Name => "Add");
-      Reader.Match (X => '+');
-      Term;
-      Cradle.Emit_Line (S => "ADD (SP)+, D0");
-      Cradle.Exit_Fn (Fn_Name => "Add");
+      Reader.Match  (X => '+');
+      Term (Current_Frame => Current_Frame);
+      Cradle.Emit_Line (S => "pop {r1}");
+      Cradle.Emit_Line (S => "add r0, r1");
    end Add;
 
-   procedure Subtract is
+   procedure Subtract (Current_Frame : in out Frame) is
    begin
       Reader.Match (X => '-');
-      Term;
-      Cradle.Emit_Line (S => "SUB (SP)+, D0");
-      Cradle.Emit_Line (S => "NEG D0");
+      Term (Current_Frame => Current_Frame);
+      Cradle.Emit_Line (S => "pop {r1}");
+      Cradle.Emit_Line (S => "sub r0, r1, r0");
    end Subtract;
 
-   procedure Expression is
+   procedure Expression (Current_Frame : in out Frame) is
    begin
-      Cradle.Enter_Fn (Fn_Name => "Expression");
+      Current_Frame.Variable_Offsets.Include ("b", 4);
       if Cradle.Is_Addop (Reader.Look) then
-         Cradle.Emit_Line ("CLR D0");
+         Cradle.Emit_Line (S => "mov r0, #0"
+                                & " @ leading zero for unary operators");
       else
-         Term;
+         Term (Current_Frame => Current_Frame);
       end if;
 
       Addop_Loop :
       while Cradle.Is_Addop (Reader.Look) loop
-         Cradle.Emit_Line (S => "MOVE D0, -(SP)");
+         Cradle.Emit_Line (S => "push {r0}");
          if Reader.Look = '+' then
-            Add;
+            Add (Current_Frame => Current_Frame);
          elsif Reader.Look = '-' then
-            Subtract;
+            Subtract (Current_Frame => Current_Frame);
+         else
+            Cradle.Expected (S => "Addop");
          end if;
       end loop Addop_Loop;
-
-      if not Reader.Is_End_Of_Line then
-         Cradle.Expected (S => "Newline");
-      end if;
-      Cradle.Exit_Fn (Fn_Name => "Expression");
    end Expression;
 
-   procedure Assignment is
-      Name : constant String := Reader.Get_Name;
+   procedure Header is
    begin
-      Reader.Match (X => '=');
-      Expression;
-      Cradle.Emit_Line (S => "LEA "
-                             & Name
-                             & "(PC), A0");
-      Cradle.Emit_Line (S => "MOVE D0, (A0)");
-   end Assignment;
+      Cradle.Emit_Line (S => ".cpu cortex-a15"
+                             & "  @ this directive enables "
+                             & " support for sdiv/udiv");
+      Cradle.Emit_Line (S => ".text");
+      Cradle.Emit_Line (S => ".global _start");
+      Cradle.Emit_Line (S => "_start:");
+   end Header;
 
-   procedure Other is
+   procedure Trailer is
    begin
-      Cradle.Enter_Fn (Fn_Name => "Other");
-      Cradle.Emit_Line (S => Reader.Get_Name);
-      Cradle.Exit_Fn (Fn_Name => "Other");
-   end Other;
-
-   procedure Condition is
-   begin
-      Cradle.Emit_Line (S => "<condition>");
-   end Condition;
-
-   procedure Do_If is
-      L : constant String := New_Label;
-   begin
-      Cradle.Enter_Fn (Fn_Name => "Do_If");
-      Reader.Match (X => 'i');
-      Condition;
-      Cradle.Emit_Line (S => "BEQ " & L);
-      Block;
-      Reader.Match (X => 'e');
-      Post_Label (L => L);
-      Cradle.Exit_Fn (Fn_Name => "Do_If");
-   end Do_If;
-
-   procedure Block is
-   begin
-      Cradle.Enter_Fn (Fn_Name => "Block");
-      Block_Loop :
-      loop
-         exit Block_Loop when Reader.Look = 'e';
-         --  Cradle.Emit_Line ("1 Look is " & Reader.Look);
-         if Reader.Look = 'i' then
-            Do_If;
-         else
-            Other;
-         end if;
-         --  Cradle.Emit_Line ("2 Look is " & Reader.Look);
-         Reader.Consume_New_Line;
-         --  Init;
-         --  Cradle.Emit_Line ("3 Look is " & Reader.Look);
-      end loop Block_Loop;
-      Cradle.Exit_Fn (Fn_Name => "Block");
-   end Block;
-
-   procedure Program is
-   begin
-      Cradle.Enter_Fn (Fn_Name => "Program");
-      Block;
-      if Reader.Look /= 'e' then
-         Cradle.Expected (S => "End");
-      end if;
-      Cradle.Emit_Line (S => "END");
-      Cradle.Exit_Fn (Fn_Name => "Program");
-   end Program;
+      Cradle.Emit_Line (S => "_zero_exit_code:");
+      Cradle.Emit_Line (S => "@mov r0, #0");
+      Cradle.Emit_Line (S => "_exit:");
+      Cradle.Emit_Line (S => "mov r7, #1");
+      Cradle.Emit_Line (S => "svc 0");
+   end Trailer;
 
    procedure Init is
    begin
-      Cradle.Enter_Fn (Fn_Name => "Init");
       Reader.Get_Char;
-      Reader.Skip_Whitespace;
-      Cradle.Exit_Fn (Fn_Name => "Init");
    end Init;
+
 end Compiler;

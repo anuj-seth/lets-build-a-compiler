@@ -19,7 +19,6 @@ begin
       Mode : constant String := CMD.Argument (1);
    begin
       if Mode = "compiler" then
-         Compiler.Init;
          --  Parser.Assignment;
          Compiler.Program;
       elsif Mode = "interpreter" then

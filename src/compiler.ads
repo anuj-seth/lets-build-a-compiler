@@ -1,15 +1,10 @@
 with Ada.Containers.Indefinite_Hashed_Maps;
 with Ada.Strings.Hash_Case_Insensitive;
 with Ada.Strings.Equal_Case_Insensitive;
+with Ada.Finalization;
 
 package Compiler is
-   type Frame is private;
-   procedure Init;
-   procedure Header;
-   procedure Trailer;
-   procedure Expression (Current_Frame : in out Frame);
-   --  procedure Assignment;
-   --  procedure Program;
+   procedure Program;
 
 private
    package String_To_Integer_Maps is
@@ -19,11 +14,24 @@ private
           Hash            => Ada.Strings.Hash_Case_Insensitive,
           Equivalent_Keys => Ada.Strings.Equal_Case_Insensitive);
 
-   type Frame is record
-      Top : Integer := 0;
-      Variable_Offsets : String_To_Integer_Maps.Map;
-   end record;
+   type Frame is new
+      Ada.Finalization.Controlled with
+      record
+         Variables_In_Stack : Natural := 0;
+         Variable_Offsets : String_To_Integer_Maps.Map;
+      end record;
 
+   overriding
+   procedure Initialize (F : in out Frame);
+   overriding
+   procedure Finalize (F : in out Frame);
+
+   procedure Init;
+   procedure Header;
+   procedure Trailer;
+   procedure Assignment (Current_Frame : in out Frame);
+   procedure Expression (Current_Frame : in out Frame);
+   procedure Identifier (Current_Frame : in out Frame);
    procedure Factor (Current_Frame : in out Frame);
    procedure Multiply (Current_Frame : in out Frame);
    procedure Divide (Current_Frame : in out Frame);
@@ -37,7 +45,8 @@ private
    --  procedure Do_Repeat;
    --  procedure Do_For;
    --  procedure Do_Break (Label : String);
-   --  procedure Block (Break_To_Label : String);
+   procedure Block (Current_Frame : in out Frame;
+      Break_To_Label : String);
    --  function New_Label return String;
    --  procedure Post_Label (L : String);
 

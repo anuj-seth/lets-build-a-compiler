@@ -31,6 +31,10 @@ private
    procedure Trailer;
    procedure Assignment (Current_Frame : in out Frame);
    procedure Expression (Current_Frame : in out Frame);
+   procedure Boolean_Term (Current_Frame : in out Frame);
+   procedure Boolean_Or (Current_Frame : in out Frame);
+   procedure Boolean_Xor (Current_Frame : in out Frame);
+   procedure Boolean_Expression (Current_Frame : in out Frame);
    procedure Identifier (Current_Frame : in out Frame);
    procedure Factor (Current_Frame : in out Frame);
    procedure Multiply (Current_Frame : in out Frame);
@@ -39,10 +43,11 @@ private
    procedure Add (Current_Frame : in out Frame);
    procedure Subtract (Current_Frame : in out Frame);
    --  procedure Condition;
-   --  procedure Do_If (Break_To_Label : String);
-   --  procedure Do_While;
-   --  procedure Do_Loop;
-   --  procedure Do_Repeat;
+   procedure Do_Do (Current_Frame : in out Frame);
+   procedure Do_If (Current_Frame : in out Frame; Break_To_Label : String);
+   procedure Do_While (Current_Frame : in out Frame);
+   procedure Do_Loop (Current_Frame : in out Frame);
+   procedure Do_Repeat (Current_Frame : in out Frame);
    --  procedure Do_For;
    --  procedure Do_Break (Label : String);
    procedure Block (Current_Frame : in out Frame;

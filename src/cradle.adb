@@ -34,6 +34,15 @@ package body Cradle is
    function Is_Addop (X : Character) return Boolean is
       (X in '+' | '-');
 
+   function Is_Orop (X : Character) return Boolean is
+      (X in '|' | '~');
+
+   function Is_Boolean (X : Character) return Boolean is
+      (X in 'T' | 't' | 'F' | 'f');
+
+   function Is_Relop (X : Character) return Boolean is
+      (X in '=' | '#' | '<' | '>');
+
    procedure Enter_Fn (Fn_Name : String) is
    begin
       if not DEBUG then

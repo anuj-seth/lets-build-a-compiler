@@ -32,6 +32,64 @@ package body Compiler is
       Cradle.Emit_Line (S => L & ":");
    end Post_Label;
 
+   procedure Equals (Current_Frame : in out Frame) is
+   begin
+      Reader.Match (X => '=');
+      Expression (Current_Frame => Current_Frame);
+      Cradle.Emit_Line (S => "pop {r1}");
+      Cradle.Emit_Line (S => "cmp r0, r1");
+      Cradle.Emit_Line (S => "eor r0, r0");
+      Cradle.Emit_Line (S => "moveq r0, #-1");
+   end Equals;
+
+   procedure Not_Equals (Current_Frame : in out Frame) is
+   begin
+      Reader.Match (X => '#');
+      Expression (Current_Frame => Current_Frame);
+      Cradle.Emit_Line (S => "pop {r1}");
+      Cradle.Emit_Line (S => "cmp r0, r1");
+      Cradle.Emit_Line (S => "eor r0, r0");
+      Cradle.Emit_Line (S => "movne r0, #-1");
+   end Not_Equals;
+
+   procedure Less (Current_Frame : in out Frame) is
+   begin
+      Reader.Match (X => '<');
+      Expression (Current_Frame => Current_Frame);
+      Cradle.Emit_Line (S => "pop {r1}");
+      Cradle.Emit_Line (S => "cmp r1, r0");
+      Cradle.Emit_Line (S => "eor r0, r0");
+      Cradle.Emit_Line (S => "movlt r0, #-1");
+   end Less;
+
+   procedure Greater (Current_Frame : in out Frame) is
+   begin
+      Reader.Match (X => '>');
+      Expression (Current_Frame => Current_Frame);
+      Cradle.Emit_Line (S => "pop {r1}");
+      Cradle.Emit_Line (S => "cmp r1, r0");
+      Cradle.Emit_Line (S => "eor r0, r0");
+      Cradle.Emit_Line (S => "movgt r0, #-1");
+   end Greater;
+
+   procedure Relation (Current_Frame : in out Frame) is
+   begin
+      Expression (Current_Frame => Current_Frame);
+      if Cradle.Is_Relop (X => Reader.Look) then
+         Cradle.Emit_Line (S => "push {r0}");
+         if Reader.Look = '=' then
+            Equals (Current_Frame => Current_Frame);
+         elsif Reader.Look = '#' then
+            Not_Equals (Current_Frame => Current_Frame);
+         elsif Reader.Look = '>' then
+            Greater (Current_Frame => Current_Frame);
+         elsif Reader.Look = '<' then
+            Less (Current_Frame => Current_Frame);
+         end if;
+         Cradle.Emit_Line (S => "tst r0, #0");
+      end if;
+   end Relation;
+
    procedure Identifier (Current_Frame : in out Frame) is
       Name : constant String := Reader.Get_Name;
    begin
@@ -73,7 +131,7 @@ package body Compiler is
 
    procedure Signed_Factor (Current_Frame : in out Frame) is
    begin
-     if Cradle.Is_Addop (Reader.Look) then
+      if Cradle.Is_Addop (Reader.Look) then
          Cradle.Emit_Line (S => "mov r0, #0"
                                 & " @ leading zero for unary operators");
          Cradle.Emit_Line (S => "push {r0}");
@@ -84,7 +142,7 @@ package body Compiler is
          end if;
       else
          Factor (Current_Frame => Current_Frame);
-     end if;
+      end if;
    end Signed_Factor;
 
    procedure Multiply (Current_Frame : in out Frame) is
@@ -149,11 +207,80 @@ package body Compiler is
          end if;
       end loop Addop_Loop;
 
-      -- TODO uncomment once multiline code is supported ?
+      --  TODO uncomment once multiline code is supported ?
       --  if not Reader.Is_End_Of_Line then
       --   Cradle.Expected (S => "Newline");
       --  end if;
    end Expression;
+
+   procedure Boolean_Factor (Current_Frame : in out Frame) is
+   begin
+      if not Cradle.Is_Boolean (X => Reader.Look) then
+         Cradle.Expected (S => "Boolean literal");
+      end if;
+      if Cradle.Is_Boolean (X => Reader.Look) then
+         if Reader.Get_Boolean then
+            Cradle.Emit_Line (S => "mov r0, #-1");
+         else
+            Cradle.Emit_Line (S => "mov r0, #0");
+         end if;
+      else
+         Relation (Current_Frame => Current_Frame);
+      end if;
+   end Boolean_Factor;
+
+   procedure Not_Factor (Current_Frame : in out Frame) is
+   begin
+      if Reader.Look = '!' then
+         Reader.Match (X => '!');
+         Boolean_Factor (Current_Frame => Current_Frame);
+         Cradle.Emit_Line (S => "mov r1, #-1");
+         Cradle.Emit_Line (S => "eor r0, r1");
+      else
+         Boolean_Factor (Current_Frame => Current_Frame);
+      end if;
+   end Not_Factor;
+
+   procedure Boolean_Term (Current_Frame : in out Frame) is
+   begin
+      Not_Factor (Current_Frame => Current_Frame);
+      while Reader.Look = '&' loop
+         Cradle.Emit_Line (S => "push {r0}");
+         Reader.Match (X => '&');
+         Not_Factor (Current_Frame => Current_Frame);
+         Cradle.Emit_Line (S => "pop {r1}");
+         Cradle.Emit_Line (S => "and r0, r1");
+      end loop;
+   end Boolean_Term;
+
+   procedure Boolean_Or (Current_Frame : in out Frame) is
+   begin
+      Reader.Match (X => '|');
+      Boolean_Term (Current_Frame => Current_Frame);
+      Cradle.Emit_Line (S => "pop {r1}");
+      Cradle.Emit_Line (S => "orr r0, r1");
+   end Boolean_Or;
+
+   procedure Boolean_Xor (Current_Frame : in out Frame) is
+   begin
+      Reader.Match (X => '~');
+      Boolean_Term (Current_Frame => Current_Frame);
+      Cradle.Emit_Line (S => "pop {r1}");
+      Cradle.Emit_Line (S => "eor r0, r1");
+   end Boolean_Xor;
+
+   procedure Boolean_Expression (Current_Frame : in out Frame) is
+   begin
+      Boolean_Term (Current_Frame => Current_Frame);
+      while Cradle.Is_Orop (X => Reader.Look) loop
+         Cradle.Emit_Line (S => "push {r0}");
+         if Reader.Look = '|' then
+            Boolean_Or (Current_Frame => Current_Frame);
+         elsif Reader.Look = '~' then
+            Boolean_Xor (Current_Frame => Current_Frame);
+         end if;
+      end loop;
+   end Boolean_Expression;
 
    procedure Assignment (Current_Frame : in out Frame) is
       Name : constant String := Reader.Get_Name;
@@ -168,7 +295,7 @@ package body Compiler is
       Cradle.Emit_Line (S => "sub sp, sp, #4");
       Current_Frame.Variable_Offsets.Include (Name, Offset);
       Current_Frame.Variables_In_Stack := Current_Frame.Variables_In_Stack + 1;
-      Expression (Current_Frame => Current_Frame);
+      Boolean_Expression (Current_Frame => Current_Frame);
       Cradle.Emit_Line (S => "str r0, [fp, #-"
                              & Cradle.Integer_To_String (I => Offset)
                              & "]");
@@ -207,11 +334,6 @@ package body Compiler is
       Cradle.Exit_Fn (Fn_Name => "Other");
    end Other;
 
-   procedure Condition is
-   begin
-      Cradle.Emit_Line (S => "cmp r0, r1   @ a dummy condition");
-   end Condition;
-
    procedure Do_Do (Current_Frame : in out Frame) is
       L : constant String := New_Label;
       Break_To_This : constant String := New_Label;
@@ -241,7 +363,7 @@ package body Compiler is
       declare
          Name : constant String := Reader.Get_Name;
       begin
-         --  the for loop should get it's own frame 
+         --  the for loop should get it's own frame
          --  since the loop counters have scope only inside loop
          --  or maybe not coz we are not creating a new frame at all
          --  TODO  I need to allocate space for all variables including
@@ -281,7 +403,7 @@ package body Compiler is
       Block (Current_Frame => Current_Frame,
              Break_To_Label => Break_To_This);
       Reader.Match (X => 'u');
-      Condition;
+      Boolean_Expression (Current_Frame => Current_Frame);
       Cradle.Emit_Line (S => "bne " & Loop_Label);
       Post_Label (L => Break_To_This);
       Cradle.Exit_Fn (Fn_Name => "Do_Repeat");
@@ -309,7 +431,7 @@ package body Compiler is
       Cradle.Enter_Fn (Fn_Name => "Do_While");
       Reader.Match (X => 'w');
       Post_Label (L => Loop_Label);
-      Condition;
+      Boolean_Expression (Current_Frame => Current_Frame);
       Cradle.Emit_Line (S => "bne " & Skip_Label);
       Block (Current_Frame => Current_Frame,
              Break_To_Label => Skip_Label);
@@ -326,7 +448,7 @@ package body Compiler is
    begin
       Cradle.Enter_Fn (Fn_Name => "Do_If");
       Reader.Match (X => 'i');
-      Condition;
+      Boolean_Expression (Current_Frame => Current_Frame);
       Cradle.Emit_Line (S => "bne " & Skip_Then_Label);
       Block (Current_Frame => Current_Frame,
              Break_To_Label => Break_To_Label);
@@ -354,15 +476,12 @@ package body Compiler is
       end if;
    end Do_Break;
 
-
    procedure Block (Current_Frame : in out Frame;
       Break_To_Label : String) is
    begin
       Block_Loop :
       loop
-         if Reader.Look = 'o' then
-            Other (Current_Frame => Current_Frame);
-         elsif Reader.Look = 'i' then
+         if Reader.Look = 'i' then
             Do_If (Current_Frame => Current_Frame,
                    Break_To_Label => Break_To_Label);
          elsif Reader.Look = 'w' then
@@ -375,6 +494,8 @@ package body Compiler is
             Do_Do (Current_Frame => Current_Frame);
          elsif Reader.Look = 'b' then
             Do_Break (Label => Break_To_Label);
+         else
+            Assignment (Current_Frame => Current_Frame);
          end if;
          exit Block_Loop when Reader.Look = 'e'
             or else Reader.Look = 'l'
@@ -393,8 +514,9 @@ package body Compiler is
          Break_To_Main : constant String := "";
 
       begin
-         Assignment (Current_Frame => Main_Frame);
-         -- Block (Current_Frame => Main_Frame,
+         Boolean_Expression (Current_Frame => Main_Frame);
+         --  Assignment (Current_Frame => Main_Frame);
+         --  Block (Current_Frame => Main_Frame,
          --       Break_To_Label => Break_To_Main);
       end;
       Trailer;

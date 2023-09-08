@@ -103,4 +103,19 @@ package body Reader is
       end;
    end Get_Num;
 
+   function Get_Boolean return Boolean is
+   begin
+      if not Cradle.Is_Boolean (X => Look_Ahead) then
+         Cradle.Expected (S => "Boolean");
+      end if;
+
+      declare
+         Result : constant Boolean :=
+            Look_Ahead in 'T' | 't';
+      begin
+         Get_Char;
+         Skip_Whitespace;
+         return Result;
+      end;
+   end Get_Boolean;
 end Reader;

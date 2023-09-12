@@ -1,5 +1,6 @@
 with Cradle;
 with Reader;
+with Scanner;
 
 package body Compiler is
 
@@ -500,8 +501,9 @@ package body Compiler is
          exit Block_Loop when Reader.Look = 'e'
             or else Reader.Look = 'l'
             or else Reader.Look = 'u';
-         --  Reader.Consume_New_Line;
-         --  Reader.Get_Char;
+
+         --   Reader.Consume_New_Line;
+         --   Reader.Get_Char;
       end loop Block_Loop;
    end Block;
 
@@ -514,7 +516,8 @@ package body Compiler is
          Break_To_Main : constant String := "";
 
       begin
-         Boolean_Expression (Current_Frame => Main_Frame);
+         Cradle.Emit_Line (S => Scanner.Value (Scanner.Scan));
+         --  Boolean_Expression (Current_Frame => Main_Frame);
          --  Assignment (Current_Frame => Main_Frame);
          --  Block (Current_Frame => Main_Frame,
          --       Break_To_Label => Break_To_Main);

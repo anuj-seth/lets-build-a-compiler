@@ -103,6 +103,22 @@ package body Reader is
       end;
    end Get_Num;
 
+   function Get_Op return String is
+   begin
+      if not Cradle.Is_Op (X => Look_Ahead) then
+         Cradle.Expected (S => "Operator");
+      end if;
+
+      declare
+         Op : constant String :=
+            Get_Char_While_True (Predicate => Cradle.Is_Op'Access,
+                                 Till_Now => "");
+      begin
+         Skip_Whitespace;
+         return Op;
+      end;
+   end Get_Op;
+
    function Get_Boolean return Boolean is
    begin
       if not Cradle.Is_Boolean (X => Look_Ahead) then

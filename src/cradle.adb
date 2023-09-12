@@ -40,6 +40,9 @@ package body Cradle is
    function Is_Boolean (X : Character) return Boolean is
       (X in 'T' | 't' | 'F' | 'f');
 
+   function Is_Op (X : Character) return Boolean is
+      (X in '+' | '-' | '*' | '/' | '<' | '>' | ':' | '=');
+
    function Is_Relop (X : Character) return Boolean is
       (X in '=' | '#' | '<' | '>');
 

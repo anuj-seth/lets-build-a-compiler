@@ -10,6 +10,7 @@ package Reader is
    procedure Match (X : Character);
    function Get_Name return String;
    function Get_Num return String;
+   function Get_Op return String;
    function Get_Boolean return Boolean;
    function Is_End_Of_Line return Boolean;
    procedure Consume_New_Line;

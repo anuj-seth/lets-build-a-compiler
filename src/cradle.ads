@@ -16,6 +16,7 @@ package Cradle is
    function Is_Orop (X : Character) return Boolean;
    function Is_Mulop (X : Character) return Boolean;
    function Is_Boolean (X : Character) return Boolean;
+   function Is_Op (X : Character) return Boolean;
    function Is_Relop (X : Character) return Boolean;
    function Integer_To_String (I : Integer) return String;
 end Cradle;

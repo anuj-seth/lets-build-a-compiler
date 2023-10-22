@@ -8,6 +8,7 @@ package Cradle is
    procedure Emit_Line (S : String);
    procedure Enter_Fn (Fn_Name : String);
    procedure Exit_Fn (Fn_Name : String);
+   function Is_End_Of_Line_Character (X : Character) return Boolean;
    function Is_Space (X : Character) return Boolean;
    function Is_Alpha (X : Character) return Boolean;
    function Is_Digit (X : Character) return Boolean;

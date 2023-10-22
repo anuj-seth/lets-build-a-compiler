@@ -1,6 +1,6 @@
 with Cradle;
 with Reader;
-with Scanner;
+with Scanner;   use type Scanner.Symbol_Type;
 
 package body Compiler is
 
@@ -283,8 +283,8 @@ package body Compiler is
       end loop;
    end Boolean_Expression;
 
-   procedure Assignment (Current_Frame : in out Frame) is
-      Name : constant String := Reader.Get_Name;
+   procedure Assignment (Current_Frame : in out Frame;
+      Var_Name : String) is
       Offset : constant Natural :=
          8 + (Current_Frame.Variables_In_Stack * 4);
    begin
@@ -294,9 +294,9 @@ package body Compiler is
       --  space for all variables before a function
       --  is compiled
       Cradle.Emit_Line (S => "sub sp, sp, #4");
-      Current_Frame.Variable_Offsets.Include (Name, Offset);
+      Current_Frame.Variable_Offsets.Include (Var_Name, Offset);
       Current_Frame.Variables_In_Stack := Current_Frame.Variables_In_Stack + 1;
-      Boolean_Expression (Current_Frame => Current_Frame);
+      Expression (Current_Frame => Current_Frame);
       Cradle.Emit_Line (S => "str r0, [fp, #-"
                              & Cradle.Integer_To_String (I => Offset)
                              & "]");
@@ -448,7 +448,6 @@ package body Compiler is
       Skip_Else_Label : String := Skip_Then_Label;
    begin
       Cradle.Enter_Fn (Fn_Name => "Do_If");
-      Reader.Match (X => 'i');
       Boolean_Expression (Current_Frame => Current_Frame);
       Cradle.Emit_Line (S => "bne " & Skip_Then_Label);
       Block (Current_Frame => Current_Frame,
@@ -477,33 +476,66 @@ package body Compiler is
       end if;
    end Do_Break;
 
+   procedure Block_Handle_Keyword (Current_Frame : in out Frame;
+      Break_To_Label : String;
+      Token : Scanner.Token_Type) is
+      Kind : Scanner.Keyword_Type := Scanner.Kind (T => Token);
+   begin
+      case Kind is
+         when Scanner.If_Sym =>
+            Cradle.Emit_Line (S => "IF found");
+            Do_If (Current_Frame => Current_Frame,
+                   Break_To_Label => Break_To_Label);
+         when Scanner.While_Sym =>
+            Do_While (Current_Frame => Current_Frame);
+         when Scanner.Loop_Sym =>
+            Do_Loop (Current_Frame => Current_Frame);
+         when Scanner.Repeat_Sym =>
+            Do_Repeat (Current_Frame => Current_Frame);
+         when Scanner.Do_Sym => 
+            Do_Do (Current_Frame => Current_Frame);
+         when Scanner.Break_Sym =>
+            Do_Break (Label => Break_To_Label);
+         when Scanner.Else_Sym .. Scanner.Endif_Sym | Scanner.End_Sym =>
+            Cradle.Halt (S => "Unexpected symbol " &
+                              Kind'Image);
+      end case;
+   end Block_Handle_Keyword;
+
    procedure Block (Current_Frame : in out Frame;
       Break_To_Label : String) is
    begin
       Block_Loop :
       loop
-         if Reader.Look = 'i' then
-            Do_If (Current_Frame => Current_Frame,
-                   Break_To_Label => Break_To_Label);
-         elsif Reader.Look = 'w' then
-            Do_While (Current_Frame => Current_Frame);
-         elsif Reader.Look = 'p' then
-            Do_Loop (Current_Frame => Current_Frame);
-         elsif Reader.Look = 'r' then
-            Do_Repeat (Current_Frame => Current_Frame);
-         elsif Reader.Look = 'd' then
-            Do_Do (Current_Frame => Current_Frame);
-         elsif Reader.Look = 'b' then
-            Do_Break (Label => Break_To_Label);
-         else
-            Assignment (Current_Frame => Current_Frame);
-         end if;
-         exit Block_Loop when Reader.Look = 'e'
-            or else Reader.Look = 'l'
-            or else Reader.Look = 'u';
+         declare
+            T : Scanner.Token_Type := Scanner.Scan;
+         begin
+            case Scanner.Kind (T => T) is
+               when Scanner.Keyword_Type =>
+                  Block_Handle_Keyword (Current_Frame => Current_Frame,
+                                        Break_To_Label => Break_To_Label,
+                                        Token => T);
+               when Scanner.Ident =>
+                  Assignment (Current_Frame => Current_Frame,
+                              Var_Name => Scanner.Value (T => T));
+               when Scanner.End_Of_Line =>
+                  Reader.Consume_New_Line;
+                  Reader.Get_Char;
+               when Scanner.Unknown =>
+                  Cradle.Halt (S => "Unknown token " 
+                               & Scanner.Value (T => T));
+               when Scanner.Operator =>
+                  Cradle.Emit_Line (S => "Operator " & Scanner.Value (T => T));
+               when Scanner.Terminator =>
+                  exit Block_Loop;
+               when others =>
+                  Cradle.Emit_Line (S => Scanner.Kind (T => T)'Image);
+            end case;
 
-         --   Reader.Consume_New_Line;
-         --   Reader.Get_Char;
+            exit Block_Loop when Reader.Look = 'e'
+               or else Reader.Look = 'l'
+               or else Reader.Look = 'u';
+         end;
       end loop Block_Loop;
    end Block;
 
@@ -512,15 +544,36 @@ package body Compiler is
       Init;
       Header;
       declare
-         Main_Frame : Frame;
-         Break_To_Main : constant String := "";
+        Main_Frame : Frame;
+        Break_To_Main : constant String := "";
 
       begin
-         Cradle.Emit_Line (S => Scanner.Value (Scanner.Scan));
+      --   loop
+      --      declare
+      --         T : Scanner.Token_Type := Scanner.Scan;
+      --      begin
+      --         case Scanner.Kind (T => T) is
+      --            when Scanner.Keyword_Type =>
+      --               Cradle.Emit_Line (S => "Keyword " & Scanner.Kind (T => T)'Image);
+      --            when Scanner.End_Of_Line =>
+      --               Reader.Consume_New_Line;
+      --               Reader.Get_Char;
+      --            when Scanner.Terminator =>
+      --               exit;
+      --            when Scanner.Unknown =>
+      --               Cradle.Halt (S => "Unknown token " 
+      --                                 & Scanner.Value (T => T));
+      --            when Scanner.Operator =>
+      --               Cradle.Emit_Line (S => "Operator " & Scanner.Value (T => T));
+      --            when others =>
+      --               Cradle.Emit_Line (S => Scanner.Value (T => T));
+      --         end case;
+      --      end;
+      --   end loop;
          --  Boolean_Expression (Current_Frame => Main_Frame);
          --  Assignment (Current_Frame => Main_Frame);
-         --  Block (Current_Frame => Main_Frame,
-         --       Break_To_Label => Break_To_Main);
+         Block (Current_Frame => Main_Frame,
+                Break_To_Label => Break_To_Main);
       end;
       Trailer;
    end Program;

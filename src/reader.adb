@@ -7,8 +7,8 @@ package body Reader is
    package TIO renames Ada.Text_IO;
    package CH renames Ada.Characters.Handling;
 
-   function Is_End_Of_Line return Boolean
-      renames TIO.End_Of_Line;
+   function Is_End_Of_Line return Boolean is
+      (Cradle.Is_End_Of_Line_Character (X => Look_Ahead));
 
    procedure Skip_Line is
    begin
@@ -39,7 +39,7 @@ package body Reader is
 
    procedure Get_Char is
    begin
-      if Is_End_Of_Line then
+      if TIO.End_Of_Line then
          Look_Ahead := Cradle.End_Of_Line_Character;
       else
          TIO.Get (Item => Look_Ahead);

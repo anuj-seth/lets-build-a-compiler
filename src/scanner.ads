@@ -4,14 +4,15 @@ with Ada.Strings.Hash;
 
 package Scanner is
    type Symbol_Type is (If_Sym, Else_Sym, EndIf_Sym,
-      End_Sym, Ident, Number, Operator);
+      While_Sym, Loop_Sym, Repeat_Sym, Do_Sym, Break_Sym,
+      End_Sym, Ident, Number, Operator, End_Of_Line, Terminator, Unknown);
 
    subtype Keyword_Type is Symbol_Type range If_Sym .. End_Sym;
 
    type Token_Type (Kind : Symbol_Type) is
       record
          case Kind is
-            when Keyword_Type =>
+            when Keyword_Type | End_Of_Line | Terminator =>
                null;
             when others =>
                Value : Ada.Strings.Unbounded.Unbounded_String;
@@ -22,6 +23,9 @@ package Scanner is
 
    function Value (T : Token_Type) return String is
       (Ada.Strings.Unbounded.To_String (T.Value));
+
+   function Kind (T : Token_Type) return Symbol_Type is
+      (T.Kind);
 
 private
    package Keyword_Map is

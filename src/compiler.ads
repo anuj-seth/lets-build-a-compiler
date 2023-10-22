@@ -29,7 +29,7 @@ private
    procedure Init;
    procedure Header;
    procedure Trailer;
-   procedure Assignment (Current_Frame : in out Frame);
+   procedure Assignment (Current_Frame : in out Frame; Var_Name : String);
    procedure Expression (Current_Frame : in out Frame);
    procedure Boolean_Term (Current_Frame : in out Frame);
    procedure Boolean_Or (Current_Frame : in out Frame);

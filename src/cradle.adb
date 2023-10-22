@@ -16,6 +16,9 @@ package body Cradle is
    function End_Of_Line_Character return Character is
       (CL1.LF);
 
+   function Is_End_Of_Line_Character (X : Character) return Boolean is
+      (X = CL1.LF);
+
    function Is_Space (X : Character) return Boolean is
       (CH.Is_Space (Item => X) or else X = CL1.HT);
 

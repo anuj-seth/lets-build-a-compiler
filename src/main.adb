@@ -4,6 +4,7 @@ with Ada.Text_IO;
 with Cradle;
 with Compiler;
 with Interpreter;
+with Tiny;
 with Calculator;
 
 procedure Main is
@@ -25,6 +26,8 @@ begin
          Interpreter.Run;
       elsif Mode = "calculator" then
          Calculator.Run;
+      elsif Mode = "tiny" then
+         Tiny.Program;
       else
          Ada.Text_IO.Put_Line ("Invalid mode argument."
                                & " Only compiler or interpreter "

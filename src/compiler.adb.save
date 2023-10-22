@@ -1,0 +1,320 @@
+with Cradle;
+with Reader;
+
+package body Compiler is
+   Label_Count : Natural := 0;
+
+   function New_Label return String is
+      Label : constant String := "L"
+                                 & Cradle.Integer_To_String (I => Label_Count);
+   begin
+      Label_Count := Label_Count + 1;
+      return Label;
+   end New_Label;
+
+   procedure Post_Label (L : String) is
+   begin
+      Cradle.Emit_Line (S => L & ":");
+   end Post_Label;
+
+   procedure Identifier is
+      Name : constant String := Reader.Get_Name;
+   begin
+      if Reader.Look = '(' then
+         Reader.Match (X => '(');
+         Reader.Match (X => ')');
+         Cradle.Emit_Line (S => "BSR " & Name);
+      else
+         Cradle.Emit_Line (S => "MOVE "
+                                & Name
+                                & "(PC), D0");
+      end if;
+   end Identifier;
+
+   procedure Factor is
+   begin
+      Cradle.Enter_Fn (Fn_Name => "Factor");
+      if Reader.Look = '(' then
+         Reader.Match (X => '(');
+         Expression;
+         Reader.Match (X => ')');
+      elsif Cradle.Is_Alpha (X => Reader.Look) then
+         Identifier;
+      else
+         Cradle.Emit_Line (S => "MOVE #"
+                                & Reader.Get_Num
+                                & ", D0");
+      end if;
+      Cradle.Exit_Fn (Fn_Name => "Factor");
+   end Factor;
+
+   procedure Multiply is
+   begin
+      Cradle.Enter_Fn (Fn_Name => "Multiply");
+      Reader.Match (X => '*');
+      Factor;
+      Cradle.Emit_Line (S => "MULS (SP)+, D0");
+      Cradle.Enter_Fn (Fn_Name => "Multiply");
+   end Multiply;
+
+   procedure Divide is
+   begin
+      Reader.Match (X => '/');
+      Factor;
+      Cradle.Emit_Line (S => "DIVS D0, -(SP)");
+   end Divide;
+
+   procedure Term is
+   begin
+      Cradle.Enter_Fn (Fn_Name => "Term");
+      Factor;
+      Mulop_Loop :
+      while Reader.Look in '*' | '/' loop
+         Cradle.Emit_Line (S => "MOVE D0, -(SP)");
+         if Reader.Look = '*' then
+            Multiply;
+         elsif Reader.Look = '/' then
+            Divide;
+         end if;
+      end loop Mulop_Loop;
+      Cradle.Exit_Fn (Fn_Name => "Term");
+   end Term;
+
+   procedure Add is
+   begin
+      Cradle.Enter_Fn (Fn_Name => "Add");
+      Reader.Match (X => '+');
+      Term;
+      Cradle.Emit_Line (S => "ADD (SP)+, D0");
+      Cradle.Exit_Fn (Fn_Name => "Add");
+   end Add;
+
+   procedure Subtract is
+   begin
+      Reader.Match (X => '-');
+      Term;
+      Cradle.Emit_Line (S => "SUB (SP)+, D0");
+      Cradle.Emit_Line (S => "NEG D0");
+   end Subtract;
+
+   procedure Expression is
+   begin
+      Cradle.Enter_Fn (Fn_Name => "Expression");
+      if Cradle.Is_Addop (Reader.Look) then
+         Cradle.Emit_Line ("CLR D0");
+      else
+         Term;
+      end if;
+
+      Addop_Loop :
+      while Cradle.Is_Addop (Reader.Look) loop
+         Cradle.Emit_Line (S => "MOVE D0, -(SP)");
+         if Reader.Look = '+' then
+            Add;
+         elsif Reader.Look = '-' then
+            Subtract;
+         end if;
+      end loop Addop_Loop;
+
+      if not Reader.Is_End_Of_Line then
+         Cradle.Expected (S => "Newline");
+      end if;
+      Cradle.Exit_Fn (Fn_Name => "Expression");
+   end Expression;
+
+   procedure Assignment is
+      Name : constant String := Reader.Get_Name;
+   begin
+      Reader.Match (X => '=');
+      Expression;
+      Cradle.Emit_Line (S => "LEA "
+                             & Name
+                             & "(PC), A0");
+      Cradle.Emit_Line (S => "MOVE D0, (A0)");
+   end Assignment;
+
+   procedure Other is
+   begin
+      Cradle.Enter_Fn (Fn_Name => "Other");
+      Cradle.Emit_Line (S => Reader.Get_Name);
+      Cradle.Exit_Fn (Fn_Name => "Other");
+   end Other;
+
+   procedure Condition is
+   begin
+      Cradle.Emit_Line (S => "<condition>");
+   end Condition;
+
+   procedure Do_Do is
+      L : constant String := New_Label;
+      Exit_Do_Label : constant String := New_Label;
+   begin
+      Reader.Match (X => 'd');
+      Expression;
+      Cradle.Emit_Line (S => "SUBQ #1, D0");
+      Post_Label (L => L);
+      Cradle.Emit_Line (S => "MOVE D0, -(SP)");
+      Block (Break_To_Label => Exit_Do_Label);
+      Cradle.Emit_Line (S => "MOVE (SP)+, D0");
+      Cradle.Emit_Line (S => "DBRA D0, " & L);
+      Cradle.Emit_Line (S => "SUBQ #2, SP");
+      Post_Label (L => Exit_Do_Label);
+      Cradle.Emit_Line (S => "ADDQ #2, SP");
+   end Do_Do;
+
+   procedure Do_For is
+      L_1 : constant String := New_Label;
+      L_2 : constant String := New_Label;
+      Exit_For_Label : constant String := New_Label;
+   begin
+      Reader.Match (X => 'f');
+      declare
+         Name : constant String := Reader.Get_Name;
+      begin
+         Reader.Match (X => '=');
+         Expression;
+         Cradle.Emit_Line (S => "SUBQ #1, D0");
+         Cradle.Emit_Line (S => "LEA " & Name & "(PC), A0");
+         Cradle.Emit_Line (S => "MOVE D0, (A0)");
+         Expression;
+         Cradle.Emit_Line (S => "MOVE D0, -(SP)");
+         Post_Label (L => L_1);
+         Cradle.Emit_Line (S => "LEA " & Name & "(PC), A0");
+         Cradle.Emit_Line (S => "MOVE (A0), D0");
+         Cradle.Emit_Line (S => "ADDQ #1, D0");
+         Cradle.Emit_Line (S => "MOVE D0, (A0)");
+         Cradle.Emit_Line (S => "CMP (SP), D0");
+         Cradle.Emit_Line (S => "BGT " & L_2);
+         Block (Break_To_Label => Exit_For_Label);
+         Reader.Match (X => 'e');
+         Cradle.Emit_Line (S => "BRA " & L_1);
+         Post_Label (L => L_2);
+         Cradle.Emit_Line (S => "ADDQ #2, SP");
+      end;
+   end Do_For;
+
+   procedure Do_Repeat is
+      Loop_Label : constant String := New_Label;
+      Exit_Repeat_Label : constant String := New_Label;
+   begin
+      Cradle.Enter_Fn (Fn_Name => "Do_Repeat");
+      Reader.Match (X => 'r');
+      Post_Label (L => Loop_Label);
+      Block (Break_To_Label => Exit_Repeat_Label);
+      Reader.Match (X => 'u');
+      Condition;
+      Cradle.Emit_Line (S => "BEQ " & Loop_Label);
+      Cradle.Exit_Fn (Fn_Name => "Do_Repeat");
+   end Do_Repeat;
+
+   procedure Do_Loop is
+      Loop_Label : constant String := New_Label;
+      Break_Label : constant String := New_Label;
+   begin
+      Cradle.Enter_Fn (Fn_Name => "Do_Loop");
+      Reader.Match (X => 'p');
+      Post_Label (L => Loop_Label);
+      Block (Break_To_Label => Break_Label);
+      Reader.Match (X => 'e');
+      Cradle.Emit_Line (S => "BRA " & Loop_Label);
+      Post_Label (L => Break_Label);
+      Cradle.Exit_Fn (Fn_Name => "Do_Loop");
+   end Do_Loop;
+
+   procedure Do_While is
+      Loop_Label : constant String := New_Label;
+      Skip_Label : constant String := New_Label;
+      Exit_While_Label : constant String := New_Label;
+   begin
+      Cradle.Enter_Fn (Fn_Name => "Do_While");
+      Reader.Match (X => 'w');
+      Post_Label (L => Loop_Label);
+      Condition;
+      Cradle.Emit_Line (S => "BEQ " & Skip_Label);
+      Block (Break_To_Label => Exit_While_Label);
+      Reader.Match (X => 'e');
+      Cradle.Emit_Line (S => "BRA " & Loop_Label);
+      Post_Label (L => Skip_Label);
+      Cradle.Exit_Fn (Fn_Name => "Do_While");
+   end Do_While;
+
+   procedure Do_If (Break_To_Label : String) is
+      Skip_Then_Label : constant String := New_Label;
+      Skip_Else_Label : String := Skip_Then_Label;
+   begin
+      Cradle.Enter_Fn (Fn_Name => "Do_If");
+      Reader.Match (X => 'i');
+      Condition;
+      Cradle.Emit_Line (S => "BEQ " & Skip_Then_Label);
+      Block (Break_To_Label => Break_To_Label);
+      if Reader.Look = 'l' then
+         Reader.Match (X => 'l');
+         Skip_Else_Label := New_Label;
+         Cradle.Emit_Line (S => "BRA " & Skip_Else_Label);
+         Post_Label (L => Skip_Then_Label);
+         Block (Break_To_Label => Break_To_Label);
+      end if;
+      Reader.Match (X => 'e');
+      Post_Label (L => Skip_Else_Label);
+      Cradle.Exit_Fn (Fn_Name => "Do_If");
+   end Do_If;
+
+   procedure Do_Break (Label : String) is
+   begin
+      Reader.Match ('b');
+      if Label /= "" then
+         Cradle.Emit_Line (S => "BRA " & Label);
+      else
+         Cradle.Halt (S => "No loop to break from");
+      end if;
+   end Do_Break;
+
+   procedure Block (Break_To_Label : String) is
+   begin
+      Cradle.Enter_Fn (Fn_Name => "Block");
+      Block_Loop :
+      loop
+         if Reader.Look = 'i' then
+            Do_If (Break_To_Label => Break_To_Label);
+         elsif Reader.Look = 'w' then
+            Do_While;
+         elsif Reader.Look = 'p' then
+            Do_Loop;
+         elsif Reader.Look = 'r' then
+            Do_Repeat;
+         elsif Reader.Look = 'f' then
+            Do_For;
+         elsif Reader.Look = 'd' then
+            Do_Do;
+         elsif Reader.Look = 'b' then
+            Do_Break (Label => Break_To_Label);
+         elsif Reader.Look = 'o' then
+            Other;
+         end if;
+         exit Block_Loop when Reader.Look = 'e'
+            or else Reader.Look = 'l'
+            or else Reader.Look = 'u';
+         Reader.Consume_New_Line;
+      end loop Block_Loop;
+      Cradle.Exit_Fn (Fn_Name => "Block");
+   end Block;
+
+   procedure Program is
+   begin
+      Cradle.Enter_Fn (Fn_Name => "Program");
+      Block (Break_To_Label => "");
+      if Reader.Look /= 'e' then
+         Cradle.Expected (S => "End");
+      end if;
+      Cradle.Emit_Line (S => "END");
+      Cradle.Exit_Fn (Fn_Name => "Program");
+   end Program;
+
+   procedure Init is
+   begin
+      Cradle.Enter_Fn (Fn_Name => "Init");
+      Reader.Get_Char;
+      Reader.Skip_Whitespace;
+      Cradle.Exit_Fn (Fn_Name => "Init");
+   end Init;
+end Compiler;
